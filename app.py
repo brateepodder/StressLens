@@ -1,5 +1,5 @@
 import streamlit as st
-import panda as pd
+import pandas as pd
 
 st.title("StressLens")
 st.write("A stress detection and monitoring system for cardiac rehabilitation patients")
