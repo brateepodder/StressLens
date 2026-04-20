@@ -35,7 +35,27 @@ with st.sidebar:
         st.header("What is StressLens?")
         st.write("StressLens acts as an automatic stress logger and reporter to aid Stress Management Therapy for cardiac rehabilitation paitents. It " \
         "automatically detects when you are stressed based on Empatica E4-collected physiological signals and allows the user to fill out a questionairre, " \
-        "inspired by current stress-logs, such as University of Ottowa Heart Institute's Stress Management guide. This allows for caregivers to track patient's" \
-        "progress on using certain relaxation techniques, which triggers are most prominent and require intervention, and signal if the patient has low HRV " \
-        "indices tied to higher mortality rates.")
+        "inspired by current stress-logs (such as University of Ottowa Heart Institute's Stress Management guide).")
+
+        st.header("How does it help?")
+        st.write("For Cardiac Rehabilitation Patients that go through Stress Management Training or Therapy, this application acts as an aid to the process " \
+        "by automatically tracking and providing data to the patient and caremanager, enabling both parties with crucial information to make better"
+        "decisions for the rehabilitation process.")
+        st.markdown("- Automatic stress logger to track most common stressors, physical and mental symptoms without the need for a physical tracker.")
+        st.markdown("- Tracks the effectiveness of relaxation techniques utilized by the user")
+        st.markdown("- Tracks important HRV metrics associated with high mortality for patients that had cardiac events")
+        st.markdown("- Allows the patient and caregiver to view the effect of their progress and therapy with real data")
+
+        st.markdown('''
+        <style>
+        [data-testid="stMarkdownContainer"] ul{
+            list-style-position: inside;
+        }
+        </style>
+        ''', unsafe_allow_html=True)
+
+        st.header("How does StressLens Work?")
+        st.write("After uploading the relevant Empatica E4 data, this data is run through a machine learning model to identify when you are stressed." \
+        "Stress periods are recorded and create questionaires for each identified time for the user to answer." \
+        "After all stress period questionaires are completed, the report is generated for that time period.")
 
