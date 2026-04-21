@@ -27,10 +27,10 @@ st.write("Here is where you can upload your data associated from your Empatica E
 # ── File Uploads ──────────────────────────────────────────────────────────────
 with st.form("data_upload_form"):
     st.subheader("Empatica E4 Data Upload")
-    acc = st.file_uploader("Upload the accelerometer data from Empatica E4.")
-    bvp = st.file_uploader("Upload the BVP data from Empatica E4.")
-    eda = st.file_uploader("Upload the EDA data from Empatica E4.")     
-    temp = st.file_uploader("Upload the temperature data from Empatica E4.")
+    acc_file = st.file_uploader("Upload the accelerometer data from Empatica E4.")
+    bvp_file = st.file_uploader("Upload the BVP data from Empatica E4.")
+    eda_file = st.file_uploader("Upload the EDA data from Empatica E4.")     
+    temp_file = st.file_uploader("Upload the temperature data from Empatica E4.")
     submit_button = st.form_submit_button("Start Processing")
 
 # ── Model loader ──────────────────────────────────────────────────────────────
@@ -79,11 +79,21 @@ with st.sidebar:
         "After all stress period questionaires are completed, the report is generated for that time period.")
 
 # FUNCTION FOR SUBMITTING 
+with st.form("data_upload_form"):
+    st.subheader("Empatica E4 Data Upload")
+    
+    acc_file = st.file_uploader("Upload Accelerometer (ACC.csv)")
+    bvp_file = st.file_uploader("Upload BVP (BVP.csv)")
+    eda_file = st.file_uploader("Upload EDA (EDA.csv)")
+    temp_file = st.file_uploader("Upload Temperature (TEMP.csv)")
+    
+    submit_button = st.form_submit_button("Start Processing")
+
 if submit_button:
-    if all([acc, bvp, eda, temp]):
+    if all([acc_file, bvp_file, eda_file, temp_file]):
         with st.spinner("Processing biometric data..."):
             # Pass the file objects directly to your src function
-            processed_df = preprocessing(acc, bvp, eda, temp)
+            processed_df = preprocessing_pipeline(acc_file, bvp_file, eda_file, temp_file)
             st.success("Processing Complete!")
             st.write(processed_df)
     else:
