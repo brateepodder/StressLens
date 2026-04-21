@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import joblib
 import os
-from preprocessing import preprocessing
+from src.preprocessing import preprocessing
 
 from pathlib import Path
 
