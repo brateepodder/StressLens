@@ -24,16 +24,7 @@ st.header("Upload Your Data")
 st.write("Here is where you can upload your data associated from your Empatica E4, or any other " \
 "device that measures these signals.")
 
-# ── File Uploads ──────────────────────────────────────────────────────────────
-with st.form("data_upload_form"):
-    st.subheader("Empatica E4 Data Upload")
-    acc_file = st.file_uploader("Upload the accelerometer data from Empatica E4.")
-    bvp_file = st.file_uploader("Upload the BVP data from Empatica E4.")
-    eda_file = st.file_uploader("Upload the EDA data from Empatica E4.")     
-    temp_file = st.file_uploader("Upload the temperature data from Empatica E4.")
-    submit_button = st.form_submit_button("Start Processing")
-
-# ── Model loader ──────────────────────────────────────────────────────────────
+# ── MODEL LOADER ──────────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner="Loading stress detection model…")
 def load_model():
     """
@@ -78,7 +69,7 @@ with st.sidebar:
         "Stress periods are recorded and create questionaires for each identified time for the user to answer. " \
         "After all stress period questionaires are completed, the report is generated for that time period.")
 
-# FUNCTION FOR SUBMITTING 
+# FORM & FUNCTION FOR SUBMITTING 
 with st.form("data_upload_form"):
     st.subheader("Empatica E4 Data Upload")
     
