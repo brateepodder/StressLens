@@ -34,7 +34,7 @@ import streamlit as st
 from scipy.signal import butter, find_peaks, sosfiltfilt
 
 # ── Model path ────────────────────────────────────────────────────────────────
-_MODEL_PATH = Path(__file__).parent / "model" / "stress_model.joblib"
+_MODEL_PATH = Path(__file__).parent.parent / "model" / "stress_model.joblib"
 
 # ── Sliding-window parameters (must match training) ───────────────────────────
 WINDOW_SEC        = 60.0   # feature window length in seconds
