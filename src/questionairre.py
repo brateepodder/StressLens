@@ -1,6 +1,6 @@
 import pandas as pd
 
-def run_pipeline(acc, bvp, eda, temp):
+def processing(acc, bvp, eda, temp):
     # Example: Helper to read Empatica's specific format
     # (Often skipping the first two rows or extracting the start time)
     df_acc = pd.read_csv(acc)

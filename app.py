@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import joblib
 import os
+from preprocessing import preprocessing
+
 from pathlib import Path
 
 # ── PAGE CONFIG ──────────────────────────────────────────────────────────────
@@ -81,7 +83,7 @@ if submit_button:
     if all([acc, bvp, eda, temp]):
         with st.spinner("Processing biometric data..."):
             # Pass the file objects directly to your src function
-            processed_df = processing(acc, bvp, eda, temp)
+            processed_df = preprocessing(acc, bvp, eda, temp)
             st.success("Processing Complete!")
             st.write(processed_df)
     else:
