@@ -121,8 +121,10 @@ def generate_care_manager_report():
             st.write("No actions recorded.")
 
     # --- BASELINE NOTE ---
-    st.info("**Baseline Note:** Comparisons to laboratory settings suggest evaluating HRV during sedentary periods. "
-    "(Baseline data pulled from non-stress segments in processed_df).")
+    st.info("Still need to add the following: " \
+    "1. Keeping track of best relaxation techniques for recommendation by storing all response inputs, " \
+    "2. Intensity markers for each emotional symptom before and after episode" \
+    "3. Finish all information to be included in Care Report, including showing raw data.")
 
 # QUESTIONAIRRE RENDERER ──────────────────────────────────────────────────────────────
 def render_episode_forms(episodes):
