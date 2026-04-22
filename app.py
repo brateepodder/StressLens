@@ -4,8 +4,10 @@ import numpy as np
 import joblib
 import os
 from src.preprocessing import preprocessing_pipeline
-
 from pathlib import Path
+
+if "completed_episodes" not in st.session_state:
+    st.session_state.completed_episodes = set()
 
 # ── PAGE CONFIG ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -69,7 +71,7 @@ with st.sidebar:
         "Stress periods are recorded and create questionaires for each identified time for the user to answer. " \
         "After all stress period questionaires are completed, the report is generated for that time period.")
 
-# FORM & FUNCTION FOR SUBMITTING 
+# FORM FOR SUBMITTING 
 with st.form("data_upload_form"):
     st.subheader("Empatica E4 Data Upload")
     
@@ -80,32 +82,26 @@ with st.form("data_upload_form"):
     
     submit_button = st.form_submit_button("Start Processing")
 
-if submit_button:
-    if all([acc_file, bvp_file, eda_file, temp_file]):
-        with st.spinner("Processing biometric data..."):
-            # Pass the file objects directly to your src function
-            processed_df = preprocessing_pipeline(acc_file, bvp_file, eda_file, temp_file)
-            st.success("Processing Complete!")
-            episodes, results_df = processed_df
-            st.write(episodes)
-            st.render_episode_forms(episodes)
-
-    else:
-        st.error("Please upload all four files before submitting.")
-
-
+# QUESTIONAIRRE RENDERER
 def render_episode_forms(episodes):
-    if not episodes:
-        st.info("No stress episodes detected for the data uploaded.")
+    # Filter out episodes that have already been saved
+    remaining_episodes = [
+        (i, ep) for i, ep in enumerate(episodes) 
+        if i not in st.session_state.completed_episodes
+    ]
+
+    if not remaining_episodes:
+        st.success("🎉 All stress episodes have been reviewed!")
         return
 
     st.header("🔴 Stress Detected")
-    st.write(f"We detected **{len(episodes)}** episodes. Please provide context for each.")
+    st.write(f"You have **{len(remaining_episodes)}** episodes left to review.")
 
-    for i, ep in enumerate(episodes):
-        # Create a unique key for each form
-        with st.form(key=f"stress_form_{i}"):
-            st.subheader(f"Episode {i+1}: {ep['start_iso']} to {ep['end_iso']}")
+    # Fixed height container makes it scrollable
+    with st.container(height=500, border=True):
+        for i, ep in remaining_episodes:
+            with st.form(key=f"stress_form_{i}"):
+                st.subheader(f"Episode {i+1}: {ep['start_iso']} to {ep['end_iso']}")
             st.caption(f"Duration: {ep['duration_sec']} seconds")
 
             # --- CORRECT/INCORRECT CLASSIFICATION ---
@@ -151,11 +147,96 @@ def render_episode_forms(episodes):
 
             feedback = st.text_area("How did you feel after?", key=f"feedback_{i}")
 
-            # --- SUBMIT ---
+                
             submitted = st.form_submit_button("Save Reflection")
+                
+            if submitted:
+                    # 1. Add to the 'completed' set
+                    st.session_state.completed_episodes.add(i)
+                    
+                    # 2. Logic to save to your database would go here
+                    # save_reflection_to_db(...) 
+                    
+                    # 3. Force a rerun to make the form disappear immediately
+                    st.rerun()
 
-            if classification != "No":
-                if submitted:
-                    # Logic to save this specific episode reflection to your database/CSV
-                    # save_reflection_to_db(ep, trigger, emotions, intensity, action, success_rate, feedback)
-                    st.success(f"Reflection for Episode {i+1} saved!")
+# SUBMIT BUTTON 
+if submit_button:
+    if all([acc_file, bvp_file, eda_file, temp_file]):
+        with st.spinner("Processing biometric data..."):
+            # Pass the file objects directly to your src function
+            processed_df = preprocessing_pipeline(acc_file, bvp_file, eda_file, temp_file)
+            st.success("Processing Complete!")
+            episodes, results_df = processed_df
+            st.write(episodes)
+            render_episode_forms(episodes)
+
+    else:
+        st.error("Please upload all four files before submitting.")
+
+
+# def render_episode_forms(episodes):
+#     if not episodes:
+#         st.info("No stress episodes detected for the data uploaded.")
+#         return
+
+#     st.header("🔴 Stress Detected")
+#     st.write(f"We detected **{len(episodes)}** episodes. Please provide context for each.")
+
+#     for i, ep in enumerate(episodes):
+#         # Create a unique key for each form
+#         with st.form(key=f"stress_form_{i}"):
+#             st.subheader(f"Episode {i+1}: {ep['start_iso']} to {ep['end_iso']}")
+#             st.caption(f"Duration: {ep['duration_sec']} seconds")
+
+#             # --- CORRECT/INCORRECT CLASSIFICATION ---
+#             classification = st.selectbox(
+#                 "Are you stressed?",
+#                 ("Yes", "No", "Ignore"),
+#             )
+
+#             # --- TRIGGER SECTION ---
+#             trigger = st.multiselect(
+#                 "What triggered this stress?",
+#                 ["Daily Hassle", "Commute", "Work", "Family", "Physical", "Life Event", 
+#                  "Financial", "Thoughts", "Other"],
+#                 key=f"trigger_{i}"
+#             )
+            
+#             # --- EMOTIONAL SYMPTOMS ---
+#             emotions = st.multiselect(
+#                 "How were you feeling?",
+#                 ["Motivated", "Calm", "Happy", "Sad", "Scared/Anxious", "Numb", "Angry"],
+#                 key=f"emotion_{i}"
+#             )
+            
+#             intensity = st.slider("Intensity of symptoms (1-5)", 1, 5, 3, key=f"intensity_{i}")
+
+#             # --- BEHAVIORAL INTERVENTION ---
+#             action = st.selectbox(
+#                 "What is your response?",
+#                 [
+#                     "Deep breathing", "Visualization", "Meditation", 
+#                     "Progressive Muscle Relaxation", "Stretching", 
+#                     "Self-massage", "Talk to a individual", 
+#                     "Distraction (Media/Music/Hobby)", "Exercise", "Other"
+#                 ],
+#                 key=f"action_{i}"
+#             )
+            
+#             success_rate = st.select_slider(
+#                 "How successful was this intervention?",
+#                 options=[1, 2, 3, 4, 5],
+#                 key=f"success_{i}"
+#             )
+
+#             feedback = st.text_area("How did you feel after?", key=f"feedback_{i}")
+
+#             # --- SUBMIT ---
+#             submitted = st.form_submit_button("Save Reflection")
+
+#             if classification != "No":
+#                 if submitted:
+#                     # Logic to save this specific episode reflection to your database/CSV
+#                     # save_reflection_to_db(ep, trigger, emotions, intensity, action, success_rate, feedback)
+#                     st.success(f"Reflection for Episode {i+1} saved!")
