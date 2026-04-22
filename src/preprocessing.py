@@ -69,20 +69,23 @@ def load_model() -> dict:
     else:
         st.sidebar.write("Bundle Type:", type(bundle))
 
-    # Case 1: It's a dictionary and has the 'model' key
-    if isinstance(bundle, dict) and "model" in bundle:
-        # We return it as-is, assuming it also has "feature_cols"
+    if isinstance(bundle, dict):
+        # Priority 1: Check for "pipeline"
+        # Priority 2: Check for "model"
+        model_obj = bundle.get("pipeline") or bundle.get("model")
+        
+        if model_obj is None:
+            raise KeyError(
+                f"Could not find model in bundle. Available keys: {list(bundle.keys())}"
+            )
+
         return {
-            "model": bundle["model"],
-            "feature_cols": bundle.get("feature_cols") # Returns None if missing
+            "model": model_obj,
+            "feature_cols": bundle.get("feature_cols")
         }
 
-    # Case 2: It's a dictionary but MISSING the 'model' key, or Case 3: It's a raw estimator
-    # We treat the entire object as the model itself
-    return {
-        "model": bundle,
-        "feature_cols": None
-    }
+    # Case: Raw estimator
+    return {"model": bundle, "feature_cols": None}
 
 
 # ═════════════════════════════════════════════════════════════════════════════
