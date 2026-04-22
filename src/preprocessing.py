@@ -643,7 +643,7 @@ def run_model(feature_df: pd.DataFrame) -> pd.DataFrame:
     else:
         # No schema in bundle — use all non-metadata columns in existing order
         model_cols = [c for c in feature_df.columns if c not in meta_cols]
-        X = feature_df[model_cols].to_numpy(dtype=float)
+        X = feature_df[model_cols].to_numpy(dtype=float).copy()
 
     # Replace any remaining NaN with column medians (same strategy as training)
     col_medians = np.nanmedian(X, axis=0)
