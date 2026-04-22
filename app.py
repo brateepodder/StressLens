@@ -10,7 +10,10 @@ from datetime import datetime
 if "completed_episodes" not in st.session_state:
     st.session_state.completed_episodes = set()
 
-# ── PAGE CONFIG ──────────────────────────────────────────────────────────────
+if "reflections" not in st.session_state:
+    st.session_state.reflections = {} 
+
+# PAGE CONFIG ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="StressLens",
     page_icon="🫀",
@@ -18,31 +21,15 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── TITLE ──────────────────────────────────────────────────────────────
 st.title("StressLens")
 st.write("A stress detection and monitoring system for cardiac rehabilitation patients.")
 
-# ── UPLOADING DATA ──────────────────────────────────────────────────────────────
+# UPLOADING DATA ──────────────────────────────────────────────────────────────
 st.header("Upload Your Data")
 st.write("Here is where you can upload your data associated from your Empatica E4, or any other " \
 "device that measures these signals.")
 
-# ── MODEL LOADER ──────────────────────────────────────────────────────────────
-@st.cache_resource(show_spinner="Loading stress detection model…")
-def load_model():
-    """
-    Loads the trained model from model/stress_model.joblib.
-    Cache keeps it in memory so it is only loaded once per session.
-    """
-    model_path = Path(__file__).parent / "model" / "stress_model.joblib"
-    if not model_path.exists():
-        raise FileNotFoundError(
-            f"Model file not found at '{model_path}'. "
-            "Make sure stress_model.joblib is inside the 'model/' folder."
-        )
-    return joblib.load(model_path)
-
-# SIDEBAR (FOR INFORMATION)
+# SIDEBAR (FOR INFORMATION) ──────────────────────────────────────────────────────────────
 with st.sidebar:
     with st.container():
         st.header("What is StressLens?")
@@ -72,7 +59,7 @@ with st.sidebar:
         "Stress periods are recorded and create questionaires for each identified time for the user to answer. " \
         "After all stress period questionaires are completed, the report is generated for that time period.")
 
-# FORM FOR SUBMITTING 
+# FORM FOR SUBMITTING ──────────────────────────────────────────────────────────────
 with st.form("data_upload_form"):
     st.subheader("Empatica E4 Data Upload")
     
@@ -83,7 +70,7 @@ with st.form("data_upload_form"):
     
     submit_button = st.form_submit_button("Start Processing")
 
-# QUESTIONAIRRE RENDERER
+# QUESTIONAIRRE RENDERER ──────────────────────────────────────────────────────────────
 def render_episode_forms(episodes):
     remaining_episodes = [
         (i, ep) for i, ep in enumerate(episodes) 
@@ -99,7 +86,7 @@ def render_episode_forms(episodes):
     st.header("🔴 Stress Detected")
     st.write(f"You have **{len(remaining_episodes)}** episodes left to review.")
 
-    # FORM CONTAINER
+    # FORM CONTAINER 
     with st.container(height=500, border=True):
         for i, ep in remaining_episodes:
             start_dt = datetime.fromtimestamp(ep['start_unix'])
@@ -156,6 +143,16 @@ def render_episode_forms(episodes):
                 submitted = st.form_submit_button("Save Reflection")
                 
                 if submitted:
+                        st.session_state.reflections[i] = {
+                            "original_episode": ep,
+                            "classification": classification,
+                            "triggers": trigger,
+                            "emotions": emotions,
+                            "action": action,
+                            "success_rate": success_rate,
+                            "feedback": feedback,
+                            "duration": ep['duration_sec']
+                        }
                         st.session_state.completed_episodes.add(i)
                         
                         # DATABASE SAVE
@@ -163,7 +160,7 @@ def render_episode_forms(episodes):
                         # FORCE RERUN FOR FORM DISAPPEARANCE
                         st.rerun()
 
-# SUBMIT BUTTON 
+# DATA SUBMIT BUTTON ──────────────────────────────────────────────────────────────
 if submit_button:
     if all([acc_file, bvp_file, eda_file, temp_file]):
         with st.spinner("Processing biometric data..."):
@@ -179,6 +176,60 @@ if submit_button:
     else:
         st.error("Please upload all four files before submitting.")
 
-# RENDERING QUESTIONAIRRES CALL
+# RENDERING QUESTIONAIRRES ──────────────────────────────────────────────────────────────
 if "episodes" in st.session_state:
     render_episode_forms(st.session_state.episodes)
+
+# GENERATING CARE REPORT ──────────────────────────────────────────────────────────────
+def generate_care_manager_report():
+    st.divider()
+    st.header("Care Manager Report")
+    
+    # 1. Convert reflections to a DataFrame for easy math
+    ref_list = list(st.session_state.reflections.values())
+    if not ref_list:
+        st.warning("No data available to generate report.")
+        return
+        
+    df_ref = pd.DataFrame(ref_list)
+    
+    # Only analyze episodes where the user confirmed "Yes" they were stressed
+    df_confirmed = df_ref[df_ref['classification'] == "Yes"]
+
+    # --- SUMMARY METRICS ---
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("Total Stress Episodes", len(df_confirmed))
+    
+    with col2:
+        avg_dur = df_confirmed['duration'].mean() if not df_confirmed.empty else 0
+        st.metric("Avg. Duration", f"{avg_dur:.1f}s")
+        
+    with col3:
+        std_dur = df_confirmed['duration'].std() if len(df_confirmed) > 1 else 0
+        st.metric("Std Dev Duration", f"{std_dur:.1f}s")
+
+    # --- TOP STRESSORS & TECHNIQUES ---
+    st.subheader("Trends & Insights")
+    c1, c2 = st.columns(2)
+    
+    with c1:
+        st.write("**Top Stressors**")
+        # Explode because triggers is a list
+        all_triggers = df_confirmed['triggers'].explode()
+        if not all_triggers.empty:
+            st.table(all_triggers.value_counts().head(3))
+        else:
+            st.write("No triggers recorded.")
+
+    with c2:
+        st.write("**Top Techniques Used**")
+        if not df_confirmed.empty:
+            st.table(df_confirmed['action'].value_counts().head(3))
+        else:
+            st.write("No actions recorded.")
+
+    # --- BASELINE NOTE ---
+    st.info("**Baseline Note:** Comparisons to laboratory settings suggest evaluating HRV during sedentary periods. "
+    "(Baseline data pulled from non-stress segments in processed_df).")
