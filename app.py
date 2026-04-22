@@ -160,6 +160,12 @@ def render_episode_forms(episodes):
                         # FORCE RERUN FOR FORM DISAPPEARANCE
                         st.rerun()
 
+    if not remaining_episodes:
+        if "episodes" in st.session_state:
+            st.success("🎉 All stress episodes have been reviewed!")
+            generate_care_manager_report()
+        return
+
 # DATA SUBMIT BUTTON ──────────────────────────────────────────────────────────────
 if submit_button:
     if all([acc_file, bvp_file, eda_file, temp_file]):
