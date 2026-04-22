@@ -172,6 +172,8 @@ if submit_button:
             st.write(episodes)
 
             # EPISODES FORM MANAGEMENT 
+            st.session_state.episodes = episodes
+            st.session_state.results_df = results_df
             st.session_state.completed_episodes = set()
 
     else:
