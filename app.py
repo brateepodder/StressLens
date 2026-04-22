@@ -5,6 +5,7 @@ import joblib
 import os
 from src.preprocessing import preprocessing_pipeline
 from pathlib import Path
+from datetime import datetime
 
 if "completed_episodes" not in st.session_state:
     st.session_state.completed_episodes = set()
@@ -84,24 +85,30 @@ with st.form("data_upload_form"):
 
 # QUESTIONAIRRE RENDERER
 def render_episode_forms(episodes):
-    # Filter out episodes that have already been saved
     remaining_episodes = [
         (i, ep) for i, ep in enumerate(episodes) 
         if i not in st.session_state.completed_episodes
     ]
 
     if not remaining_episodes:
-        st.success("🎉 All stress episodes have been reviewed!")
+        if "episodes" in st.session_state:
+            st.success("🎉 All stress episodes have been reviewed! Generating report...")
+            # TRIGGER REPORT GENERATION
         return
 
     st.header("🔴 Stress Detected")
     st.write(f"You have **{len(remaining_episodes)}** episodes left to review.")
 
-    # Fixed height container makes it scrollable
+    # FORM CONTAINER
     with st.container(height=500, border=True):
         for i, ep in remaining_episodes:
+            start_dt = datetime.fromtimestamp(ep['start_unix'])
+            end_dt = datetime.fromtimestamp(ep['end_unix'])
+            readable_start = start_dt.strftime("%d %B %Y, %H:%M")
+            readable_end = end_dt.strftime("%H:%M") 
+
             with st.form(key=f"stress_form_{i}"):
-                st.subheader(f"Episode {i+1}: {ep['start_iso']} to {ep['end_iso']}")
+                st.subheader(f"Episode {i+1}: {readable_start} to {readable_end}")
                 st.caption(f"Duration: {ep['duration_sec']} seconds")
 
                 # --- CORRECT/INCORRECT CLASSIFICATION ---
@@ -149,25 +156,27 @@ def render_episode_forms(episodes):
                 submitted = st.form_submit_button("Save Reflection")
                 
                 if submitted:
-                        # 1. Add to the 'completed' set
                         st.session_state.completed_episodes.add(i)
                         
-                        # 2. Logic to save to your database would go here
-                        # save_reflection_to_db(...) 
+                        # DATABASE SAVE
                         
-                        # 3. Force a rerun to make the form disappear immediately
+                        # FORCE RERUN FOR FORM DISAPPEARANCE
                         st.rerun()
 
 # SUBMIT BUTTON 
 if submit_button:
     if all([acc_file, bvp_file, eda_file, temp_file]):
         with st.spinner("Processing biometric data..."):
-            # Pass the file objects directly to your src function
-            processed_df = preprocessing_pipeline(acc_file, bvp_file, eda_file, temp_file)
+            episodes, results_df = preprocessing_pipeline(acc_file, bvp_file, eda_file, temp_file)
             st.success("Processing Complete!")
-            episodes, results_df = processed_df
             st.write(episodes)
-            render_episode_forms(episodes)
+
+            # EPISODES FORM MANAGEMENT 
+            st.session_state.completed_episodes = set()
 
     else:
         st.error("Please upload all four files before submitting.")
+
+# RENDERING QUESTIONAIRRES CALL
+if "episodes" in st.session_state:
+    render_episode_forms(st.session_state.episodes)
