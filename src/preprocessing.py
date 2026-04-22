@@ -52,40 +52,17 @@ MIN_EPISODE_SEC   = 120    # discard episodes shorter than 2 min (noise)
 
 @st.cache_resource(show_spinner="Loading stress-detection model…")
 def load_model() -> dict:
-    """
-    Loads the joblib model bundle and ensures it returns a standard format:
-    {"model": estimator, "feature_cols": list_or_None}
-    """
     if not _MODEL_PATH.exists():
-        raise FileNotFoundError(
-            f"Model not found at '{_MODEL_PATH}'. "
-            "Place stress_model.joblib inside the model/ folder."
-        )
+        raise FileNotFoundError(f"Model missing at {_MODEL_PATH}")
 
     bundle = joblib.load(_MODEL_PATH)
 
-    if isinstance(bundle, dict):
-        st.sidebar.write("Bundle Keys:", list(bundle.keys()))
-    else:
-        st.sidebar.write("Bundle Type:", type(bundle))
-
-    if isinstance(bundle, dict):
-        # Priority 1: Check for "pipeline"
-        # Priority 2: Check for "model"
-        model_obj = bundle.get("pipeline") or bundle.get("model")
-        
-        if model_obj is None:
-            raise KeyError(
-                f"Could not find model in bundle. Available keys: {list(bundle.keys())}"
-            )
-
-        return {
-            "model": model_obj,
-            "feature_cols": bundle.get("feature_cols")
-        }
-
-    # Case: Raw estimator
-    return {"model": bundle, "feature_cols": None}
+    return {
+        "model": bundle["pipeline"], 
+        "feature_cols": bundle["feature_cols"],
+        "threshold": bundle.get("decision_threshold", 0.5),
+        "label_map": {bundle["label_positive"]: "Stress", bundle["label_negative"]: "Baseline"}
+    }
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -620,55 +597,37 @@ def extract_all_windows(preprocessed: dict) -> pd.DataFrame:
 # ═════════════════════════════════════════════════════════════════════════════
 
 def run_model(feature_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Loads the model bundle, aligns feature columns to the training schema,
-    runs prediction, and appends predicted_stress + stress_prob columns.
-
-    The model bundle may contain a "feature_cols" list that defines the exact
-    column order used during training. If present, we reindex to that order
-    (filling any missing columns with NaN — a signal to investigate the
-    feature extractor if this happens).
-
-    Returns the feature_df with two new columns appended.
-    """
     bundle = load_model()
-    model  = bundle["model"]
-    feature_cols: list[str] | None = bundle.get("feature_cols")
+    pipeline = bundle["model"]  # This is the full Pipeline object
+    feature_cols = bundle["feature_cols"]
+    threshold = bundle.get("threshold", 0.5)
 
-    # Metadata columns that must not be passed to the model
-    meta_cols = {"window_start_unix", "window_end_unix", "window_start_iso"}
+    # 1. Align and Extract Features
+    # We still need this to ensure the order matches the training CSV
+    missing = [c for c in feature_cols if c not in feature_df.columns]
+    if missing:
+        raise ValueError(f"Missing features: {missing}")
+    
+    # We use .values directly; the Pipeline handles the NaN imputation inside!
+    X = feature_df[feature_cols].values
 
-    if feature_cols:
-        # Enforce exact training-time column order
-        missing = [c for c in feature_cols if c not in feature_df.columns]
-        if missing:
-            raise ValueError(
-                f"Feature mismatch: the following columns expected by the model "
-                f"are absent from the extracted features: {missing}.\n"
-                f"Check that the preprocessing parameters match training."
-            )
-        X = feature_df[feature_cols].to_numpy(dtype=float)
-    else:
-        # No schema in bundle — use all non-metadata columns in existing order
-        model_cols = [c for c in feature_df.columns if c not in meta_cols]
-        X = feature_df[model_cols].to_numpy(dtype=float).copy()
+    # 2. Get Probabilities
+    # Since you optimized the threshold in training, we use predict_proba
+    probabilities = pipeline.predict_proba(X)
+    
+    # Your script noted '2' as the stress label. 
+    # Usually, classes_ are [1, 2], so index 1 is the stress probability.
+    stress_prob = probabilities[:, 1] 
 
-    # Replace any remaining NaN with column medians (same strategy as training)
-    col_medians = np.nanmedian(X, axis=0)
-    nan_mask    = np.isnan(X)
-    X[nan_mask] = np.take(col_medians, np.where(nan_mask)[1])
+    # 3. Apply the Optimized Threshold
+    predictions = (stress_prob >= threshold).astype(int)
+    # Map back to your original labels if desired: 1 for Baseline, 2 for Stress
+    predictions = np.where(predictions == 1, 2, 1)
 
-    predictions = model.predict(X)
-
-    try:
-        probabilities = model.predict_proba(X)[:, 1]
-    except AttributeError:
-        # Model does not support predict_proba (e.g. SVM without probability=True)
-        probabilities = predictions.astype(float)
-
+    # 4. Build Result
     result_df = feature_df.copy()
     result_df["predicted_stress"] = predictions
-    result_df["stress_prob"]      = probabilities
+    result_df["stress_prob"] = stress_prob
 
     return result_df
 
