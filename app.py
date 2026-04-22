@@ -222,7 +222,6 @@ if submit_button:
         with st.spinner("Processing biometric data..."):
             episodes, results_df = preprocessing_pipeline(acc_file, bvp_file, eda_file, temp_file)
             st.success("Processing Complete!")
-            st.write(episodes)
 
             # EPISODES FORM MANAGEMENT 
             st.session_state.episodes = episodes
