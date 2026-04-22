@@ -64,6 +64,11 @@ def load_model() -> dict:
 
     bundle = joblib.load(_MODEL_PATH)
 
+    if isinstance(bundle, dict):
+        st.sidebar.write("Bundle Keys:", list(bundle.keys()))
+    else:
+        st.sidebar.write("Bundle Type:", type(bundle))
+
     # Case 1: It's a dictionary and has the 'model' key
     if isinstance(bundle, dict) and "model" in bundle:
         # We return it as-is, assuming it also has "feature_cols"
