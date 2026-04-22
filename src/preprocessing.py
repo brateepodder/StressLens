@@ -51,31 +51,33 @@ MIN_EPISODE_SEC   = 120    # discard episodes shorter than 2 min (noise)
 # ═════════════════════════════════════════════════════════════════════════════
 
 @st.cache_resource(show_spinner="Loading stress-detection model…")
-def load_model() -> object:
+def load_model() -> dict:
     """
-    Loads the joblib model bundle once per Streamlit session and caches it.
-
-    The bundle is expected to be a dict with at least:
-        bundle["model"]        – fitted sklearn-compatible estimator
-        bundle["feature_cols"] – ordered list of feature column names
-
-    If the bundle IS the estimator directly (no wrapper dict), we handle
-    that too and fall back to a hard-coded column order.
+    Loads the joblib model bundle and ensures it returns a standard format:
+    {"model": estimator, "feature_cols": list_or_None}
     """
     if not _MODEL_PATH.exists():
         raise FileNotFoundError(
             f"Model not found at '{_MODEL_PATH}'. "
             "Place stress_model.joblib inside the model/ folder."
         )
+
     bundle = joblib.load(_MODEL_PATH)
 
-    # Support both raw estimator and dict-wrapped bundle
-    if isinstance(bundle, dict):
-        if "model" not in bundle:
-            raise KeyError("Model bundle dict must contain a 'model' key.")
-        return bundle          # {"model": estimator, "feature_cols": [...]}
-    else:
-        return {"model": bundle, "feature_cols": None}  # raw estimator
+    # Case 1: It's a dictionary and has the 'model' key
+    if isinstance(bundle, dict) and "model" in bundle:
+        # We return it as-is, assuming it also has "feature_cols"
+        return {
+            "model": bundle["model"],
+            "feature_cols": bundle.get("feature_cols") # Returns None if missing
+        }
+
+    # Case 2: It's a dictionary but MISSING the 'model' key, or Case 3: It's a raw estimator
+    # We treat the entire object as the model itself
+    return {
+        "model": bundle,
+        "feature_cols": None
+    }
 
 
 # ═════════════════════════════════════════════════════════════════════════════
