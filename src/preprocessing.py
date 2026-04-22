@@ -665,12 +665,14 @@ def group_stress_episodes(result_df: pd.DataFrame) -> list[dict]:
     last_stressed_unix: float | None = None
     last_stressed_iso:  str   | None = None
 
-    for _, row in result_df.iterrows():
+    results = result_df.copy()
+
+    for _, row in results.iterrows():
         win_start_unix = float(row["window_start_unix"])
         win_start_iso  = str(row["window_start_iso"])
         win_end_unix   = float(row["window_end_unix"])
         win_end_iso    = datetime.fromtimestamp(win_end_unix, tz=timezone.utc).isoformat()
-        is_stressed    = int(row["predicted_stress"]) == 1
+        is_stressed = int(row["predicted_stress"]) == 2
 
         if is_stressed:
             if not in_episode:
