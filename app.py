@@ -166,7 +166,7 @@ def render_episode_forms(episodes):
     # FORM CONTAINER 
     with st.container(height=500, border=True):
         for i, ep in remaining_episodes:
-            top_physiological_response = explanations if explanations else None
+            top_physiological_response = explanations[i]['display_name'] if explanations[i]['display_name'] else None
             start_dt = datetime.fromtimestamp(ep['start_unix'])
             end_dt = datetime.fromtimestamp(ep['end_unix'])
             readable_start = start_dt.strftime("%d %B %Y, %H:%M")

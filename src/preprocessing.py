@@ -765,7 +765,4 @@ def preprocessing_pipeline(
     # 6. Return explanations
     explanations = [get_leading_factor(ep, result_df, bundle) for ep in episodes]
 
-
-    logging.info("Explanations:", explanations)
-
     return episodes, result_df, explanations
