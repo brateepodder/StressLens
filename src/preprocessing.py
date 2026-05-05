@@ -20,7 +20,7 @@ Public API
                      window_start_unix / window_end_unix / window_start_iso /
                      predicted_stress / stress_prob
 """
-
+import logging
 from __future__ import annotations
 
 import io
@@ -33,6 +33,8 @@ import pandas as pd
 import streamlit as st
 from scipy.signal import butter, find_peaks, sosfiltfilt
 from src.shap_explanation import explain_episodes
+
+logging.basicConfig(level=logging.INFO)
 
 
 # ── Model path ────────────────────────────────────────────────────────────────
@@ -762,5 +764,7 @@ def preprocessing_pipeline(
 
     # 6. Return explanations
     explanations = explain_episodes(episodes, result_df, bundle)
+
+    logging.info("Explanations:", explanations)
 
     return episodes, result_df, explanations
