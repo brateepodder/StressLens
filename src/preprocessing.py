@@ -632,7 +632,7 @@ def run_model(feature_df: pd.DataFrame, bundle: dict) -> pd.DataFrame:
     result_df["predicted_stress"] = predictions
     result_df["stress_prob"] = stress_prob
 
-    return result_df, bundle
+    return result_df
 
 
 # ═════════════════════════════════════════════════════════════════════════════
