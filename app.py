@@ -86,63 +86,6 @@ if submit_button:
     else:
         st.error("Please upload all four files before submitting.")
 
-
-# GENERATING CARE REPORT ──────────────────────────────────────────────────────────────
-def generate_care_manager_report():
-    st.divider()
-    st.header("Care Manager Report")
-    
-    # 1. Convert reflections to a DataFrame for easy math
-    ref_list = list(st.session_state.reflections.values())
-    if not ref_list:
-        st.warning("No data available to generate report.")
-        return
-        
-    df_ref = pd.DataFrame(ref_list)
-    
-    # Only analyze episodes where the user confirmed "Yes" they were stressed
-    df_confirmed = df_ref[df_ref['classification'] == "Yes"]
-
-    # --- SUMMARY METRICS ---
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("Total Stress Episodes", len(df_confirmed))
-    
-    with col2:
-        avg_dur = df_confirmed['duration'].mean() if not df_confirmed.empty else 0
-        st.metric("Avg. Duration", f"{avg_dur:.1f}s")
-        
-    with col3:
-        std_dur = df_confirmed['duration'].std() if len(df_confirmed) > 1 else 0
-        st.metric("Std Dev Duration", f"{std_dur:.1f}s")
-
-    # --- TOP STRESSORS & TECHNIQUES ---
-    st.subheader("Trends & Insights")
-    c1, c2 = st.columns(2)
-    
-    with c1:
-        st.write("**Top Stressors**")
-        # Explode because triggers is a list
-        all_triggers = df_confirmed['triggers'].explode()
-        if not all_triggers.empty:
-            st.table(all_triggers.value_counts().head(3))
-        else:
-            st.write("No triggers recorded.")
-
-    with c2:
-        st.write("**Top Techniques Used**")
-        if not df_confirmed.empty:
-            st.table(df_confirmed['action'].value_counts().head(3))
-        else:
-            st.write("No actions recorded.")
-
-    # --- BASELINE NOTE ---
-    st.info("Still need to add the following: " \
-    "1. Keeping track of best relaxation techniques for recommendation by storing all response inputs, " \
-    "2. Intensity markers for each emotional symptom before and after episode" \
-    "3. Finish all information to be included in Care Report, including showing raw data.")
-
 # QUESTIONAIRRE RENDERER ──────────────────────────────────────────────────────────────
 def render_episode_forms(episodes):
     remaining_episodes = [
@@ -214,7 +157,11 @@ def render_episode_forms(episodes):
                     key=f"success_{i}"
                 )
 
-                feedback = st.text_area("How did you feel after?", key=f"feedback_{i}")
+                feedback = st.multiselect(
+                    "How did you feel after?",
+                    ["Less Stressed", "Same Amount of Stressed", "More Stressed"],
+                    key=f"feedback_{i}"
+                )
 
                     
                 submitted = st.form_submit_button("Save Reflection")
@@ -240,3 +187,79 @@ def render_episode_forms(episodes):
 # RENDERING QUESTIONAIRRES ──────────────────────────────────────────────────────────────
 if "episodes" in st.session_state:
     render_episode_forms(st.session_state.episodes)
+
+# GENERATING REPORT ──────────────────────────────────────────────────────────────
+def generate_care_manager_report():
+    st.divider()
+    st.header("Care Manager Report")
+    
+    ref_list = list(st.session_state.reflections.values())
+    if not ref_list:
+        st.warning("No data available to generate report.")
+        return
+        
+    df_ref = pd.DataFrame(ref_list)
+    df_confirmed = df_ref[df_ref['classification'] == "Yes"].copy()
+
+    # ── SUMMARY METRICS ───────────────────────────────────────────────────────
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Stress Episodes", len(df_confirmed))
+    with col2:
+        avg_dur = df_confirmed['duration'].mean() if not df_confirmed.empty else 0
+        st.metric("Avg. Duration", f"{int(avg_dur // 60)}m {int(avg_dur % 60)}s")
+    with col3:
+        std_dur = df_confirmed['duration'].std() if len(df_confirmed) > 1 else 0
+        st.metric("Std Dev Duration", f"{std_dur:.1f}s")
+
+    # ── TRENDS & INSIGHTS ─────────────────────────────────────────────────────
+    st.subheader("Trends & Insights")
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.write("**Top Stressors**")
+        if not df_confirmed.empty:
+            triggers_exploded = df_confirmed['triggers'].explode()
+            triggers_exploded = triggers_exploded[triggers_exploded.notna() & (triggers_exploded != "")]
+
+            if not triggers_exploded.empty:
+                trigger_stats = (
+                    triggers_exploded
+                    .to_frame(name="trigger")
+                    .join(df_confirmed[["duration"]])
+                    .groupby("trigger")["duration"]
+                    .agg(Count="count", Avg_Duration_sec="mean")
+                    .sort_values("Count", ascending=False)
+                    .head(5)
+                )
+                trigger_stats["Avg Duration"] = trigger_stats["Avg_Duration_sec"].apply(
+                    lambda s: f"{int(s // 60)}m {int(s % 60)}s"
+                )
+                st.table(trigger_stats[["Count", "Avg Duration"]])
+            else:
+                st.write("No triggers recorded.")
+        else:
+            st.write("No confirmed episodes.")
+
+    with c2:
+        st.write("**Top Techniques Used**")
+        if not df_confirmed.empty:
+            technique_stats = (
+                df_confirmed
+                .groupby("action")["duration"]
+                .agg(Count="count", Avg_Duration_sec="mean")
+                .sort_values("Count", ascending=False)
+                .head(5)
+            )
+            technique_stats["Avg Duration"] = technique_stats["Avg_Duration_sec"].apply(
+                lambda s: f"{int(s // 60)}m {int(s % 60)}s"
+            )
+            st.table(technique_stats[["Count", "Avg Duration"]])
+        else:
+            st.write("No actions recorded.")
+
+    # --- BASELINE NOTE ---
+    st.info("Still need to add the following: " \
+    "1. Keeping track of best relaxation techniques for recommendation by storing all response inputs, " \
+    "2. Intensity markers for each emotional symptom before and after episode" \
+    "3. Finish all information to be included in Care Report, including showing raw data.")
