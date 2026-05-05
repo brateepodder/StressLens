@@ -76,8 +76,9 @@ def get_leading_factor(
     if not _SHAP_AVAILABLE:
         return None
 
-    pipeline     = bundle["pipeline"]
+    pipeline = bundle["model"]  
     feature_cols = bundle["feature_cols"]
+    threshold = bundle.get("threshold", 0.5)
 
     # ── 1. Find the first stressed window of this episode ────────────────────
     trigger_mask = (
