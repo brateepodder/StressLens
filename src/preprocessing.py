@@ -639,7 +639,7 @@ def run_model(feature_df: pd.DataFrame, bundle: dict) -> pd.DataFrame:
 # STEP 7 – Group windows into stress episodes
 # ═════════════════════════════════════════════════════════════════════════════
 
-def group_stress_episodes(result_df: pd.DataFrame) -> list[dict]:
+def group_stress_episodes(result_df: pd.DataFrame, bundle) -> list[dict]:
     """
     Converts per-window binary predictions into discrete stress episodes.
 
@@ -778,6 +778,6 @@ def preprocessing_pipeline(
     result_df = run_model(feature_df, bundle)
 
     # 5. Group stressed windows into discrete episodes
-    episodes = group_stress_episodes(result_df)
+    episodes = group_stress_episodes(result_df, bundle)
 
     return episodes, result_df
