@@ -13,6 +13,9 @@ if "completed_episodes" not in st.session_state:
 if "reflections" not in st.session_state:
     st.session_state.reflections = {} 
 
+if "explanations" not in st.session_state:
+    st.session_state.explanations = {} 
+
 # PAGE CONFIG ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="StressLens",
@@ -59,7 +62,7 @@ with st.sidebar:
         "Stress periods are recorded and create questionaires for each identified time for the user to answer. " \
         "After all stress period questionaires are completed, the report is generated for that time period.")
 
-# FORM FOR SUBMITTING ──────────────────────────────────────────────────────────────
+# DATA SUBMISSION FORM ──────────────────────────────────────────────────────────────
 with st.form("data_upload_form"):
     st.subheader("Empatica E4 Data Upload")
     
@@ -69,6 +72,24 @@ with st.form("data_upload_form"):
     temp_file = st.file_uploader("Upload Temperature (TEMP.csv)")
     
     submit_button = st.form_submit_button("Start Processing")
+
+# DATA SUBMISSION BUTTON ──────────────────────────────────────────────────────────────
+if submit_button:
+    if all([acc_file, bvp_file, eda_file, temp_file]):
+        with st.spinner("Processing biometric data..."):
+            episodes, results_df, explanations = preprocessing_pipeline(acc_file, bvp_file, eda_file, temp_file)
+            st.success("Processing Complete!")
+
+            # EPISODES FORM MANAGEMENT 
+            st.session_state.episodes = episodes
+            st.session_state.results_df = results_df
+            st.session_state.completed_episodes = set()
+            st.session_state.explanations = explanations
+
+
+    else:
+        st.error("Please upload all four files before submitting.")
+
 
 # GENERATING CARE REPORT ──────────────────────────────────────────────────────────────
 def generate_care_manager_report():
@@ -145,6 +166,8 @@ def render_episode_forms(episodes):
     # FORM CONTAINER 
     with st.container(height=500, border=True):
         for i, ep in remaining_episodes:
+            top_reason = explanations[i]["top_features"][0] if explanations[i]["top_features"] else None
+            display_name = FEATURE_DISPLAY_NAMES.get(top_reason["name"], top_reason["name"]) if top_reason else "Unknown"
             start_dt = datetime.fromtimestamp(ep['start_unix'])
             end_dt = datetime.fromtimestamp(ep['end_unix'])
             readable_start = start_dt.strftime("%d %B %Y, %H:%M")
@@ -152,7 +175,10 @@ def render_episode_forms(episodes):
 
             with st.form(key=f"stress_form_{i}"):
                 st.subheader(f"Episode {i+1}: {readable_start} to {readable_end}")
-                st.caption(f"Duration: {ep['duration_sec']} seconds")
+                st.caption(
+                f"Duration: {ep['duration_sec'] // 60}m {ep['duration_sec'] % 60}s  •  "
+                f"Primary trigger: {display_name}"
+            )
 
                 # --- CORRECT/INCORRECT CLASSIFICATION ---
                 classification = st.selectbox(
@@ -216,21 +242,18 @@ def render_episode_forms(episodes):
                         # FORCE RERUN FOR FORM DISAPPEARANCE
                         st.rerun()
 
-# DATA SUBMIT BUTTON ──────────────────────────────────────────────────────────────
-if submit_button:
-    if all([acc_file, bvp_file, eda_file, temp_file]):
-        with st.spinner("Processing biometric data..."):
-            episodes, results_df = preprocessing_pipeline(acc_file, bvp_file, eda_file, temp_file)
-            st.success("Processing Complete!")
-
-            # EPISODES FORM MANAGEMENT 
-            st.session_state.episodes = episodes
-            st.session_state.results_df = results_df
-            st.session_state.completed_episodes = set()
-
-    else:
-        st.error("Please upload all four files before submitting.")
-
 # RENDERING QUESTIONAIRRES ──────────────────────────────────────────────────────────────
 if "episodes" in st.session_state:
     render_episode_forms(st.session_state.episodes)
+
+FEATURE_DISPLAY_NAMES = {
+    "BVP_PRV_RMSSD":    "Heart Rate Variability (RMSSD)",
+    "BVP_PRV_pNN50":    "Heart Rate Variability (pNN50)",
+    "BVP_HR_mean":      "Average Heart Rate",
+    "SCR_nPeaks":       "Skin Conductance Responses",
+    "SCR_sumAmplitude": "Skin Conductance Response Strength",
+    "EDA_slope":        "Skin Conductance Trend",
+    "TEMP_slope":       "Skin Temperature Trend",
+    "SCL_mean":         "Baseline Skin Conductance",
+}
+

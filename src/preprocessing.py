@@ -32,6 +32,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from scipy.signal import butter, find_peaks, sosfiltfilt
+from src.shap_explanation import explain_episodes
+
 
 # ── Model path ────────────────────────────────────────────────────────────────
 _MODEL_PATH = Path(__file__).parent.parent / "model" / "stress_model.joblib"
@@ -629,7 +631,7 @@ def run_model(feature_df: pd.DataFrame) -> pd.DataFrame:
     result_df["predicted_stress"] = predictions
     result_df["stress_prob"] = stress_prob
 
-    return result_df
+    return result_df, bundle
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -753,9 +755,12 @@ def preprocessing_pipeline(
     feature_df = extract_all_windows(preprocessed)
 
     # 4. Run ML model → appends predicted_stress + stress_prob columns
-    result_df = run_model(feature_df)
+    result_df, bundle = run_model(feature_df)
 
     # 5. Group stressed windows into discrete episodes
     episodes = group_stress_episodes(result_df)
 
-    return episodes, result_df
+    # 6. Return explanations
+    explanations = explain_episodes(episodes, result_df, bundle)
+
+    return episodes, result_df, explanations
