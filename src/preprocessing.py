@@ -32,7 +32,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from scipy.signal import butter, find_peaks, sosfiltfilt
-from src.shap_explanation import explain_episodes
+from src.shap_explanation import get_leading_factor
 
 logging.basicConfig(level=logging.INFO)
 
@@ -600,8 +600,7 @@ def extract_all_windows(preprocessed: dict) -> pd.DataFrame:
 # STEP 6 – Run the ML model
 # ═════════════════════════════════════════════════════════════════════════════
 
-def run_model(feature_df: pd.DataFrame) -> pd.DataFrame:
-    bundle = load_model()
+def run_model(feature_df: pd.DataFrame, bundle: dict) -> pd.DataFrame:
     pipeline = bundle["model"]  # This is the full Pipeline object
     feature_cols = bundle["feature_cols"]
     threshold = bundle.get("threshold", 0.5)
@@ -732,7 +731,7 @@ def preprocessing_pipeline(
     bvp_file,
     eda_file,
     temp_file,
-) -> tuple[list[dict], pd.DataFrame]:
+) -> tuple[list[dict], pd.DataFrame, list[dict]]:
     """
     Full end-to-end pipeline.
 
@@ -757,13 +756,14 @@ def preprocessing_pipeline(
     feature_df = extract_all_windows(preprocessed)
 
     # 4. Run ML model → appends predicted_stress + stress_prob columns
-    result_df, bundle = run_model(feature_df)
+    bundle = load_model()
+    result_df = run_model(feature_df, bundle)
 
     # 5. Group stressed windows into discrete episodes
     episodes = group_stress_episodes(result_df)
 
     # 6. Return explanations
-    explanations = explain_episodes(episodes, result_df, bundle)
+    explanations = get_leading_factor(episodes, result_df, bundle)
 
     logging.info("Explanations:", explanations)
 

@@ -166,8 +166,7 @@ def render_episode_forms(episodes):
     # FORM CONTAINER 
     with st.container(height=500, border=True):
         for i, ep in remaining_episodes:
-            top_reason = explanations[i]["top_features"][0] if explanations[i]["top_features"] else None
-            display_name = FEATURE_DISPLAY_NAMES.get(top_reason["name"], top_reason["name"]) if top_reason else "Unknown"
+            top_physiological_response = explanations if explanations else None
             start_dt = datetime.fromtimestamp(ep['start_unix'])
             end_dt = datetime.fromtimestamp(ep['end_unix'])
             readable_start = start_dt.strftime("%d %B %Y, %H:%M")
@@ -177,7 +176,7 @@ def render_episode_forms(episodes):
                 st.subheader(f"Episode {i+1}: {readable_start} to {readable_end}")
                 st.caption(
                 f"Duration: {ep['duration_sec'] // 60}m {ep['duration_sec'] % 60}s  •  "
-                f"Primary trigger: {display_name}"
+                f"Primary trigger: {top_physiological_response}"
             )
 
                 # --- CORRECT/INCORRECT CLASSIFICATION ---
@@ -245,15 +244,3 @@ def render_episode_forms(episodes):
 # RENDERING QUESTIONAIRRES ──────────────────────────────────────────────────────────────
 if "episodes" in st.session_state:
     render_episode_forms(st.session_state.episodes)
-
-FEATURE_DISPLAY_NAMES = {
-    "BVP_PRV_RMSSD":    "Heart Rate Variability (RMSSD)",
-    "BVP_PRV_pNN50":    "Heart Rate Variability (pNN50)",
-    "BVP_HR_mean":      "Average Heart Rate",
-    "SCR_nPeaks":       "Skin Conductance Responses",
-    "SCR_sumAmplitude": "Skin Conductance Response Strength",
-    "EDA_slope":        "Skin Conductance Trend",
-    "TEMP_slope":       "Skin Temperature Trend",
-    "SCL_mean":         "Baseline Skin Conductance",
-}
-
