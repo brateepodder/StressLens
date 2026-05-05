@@ -162,7 +162,7 @@ def render_episode_forms(episodes):
     # FORM CONTAINER 
     with st.container(height=500, border=True):
         for i, ep in remaining_episodes:
-            top_physiological_response = ep['leading_factor']
+            top_physiological_response = ep['leading_factor']['display_name']
             start_dt = datetime.fromtimestamp(ep['start_unix'])
             end_dt = datetime.fromtimestamp(ep['end_unix'])
             readable_start = start_dt.strftime("%d %B %Y, %H:%M")
