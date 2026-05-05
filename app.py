@@ -86,108 +86,6 @@ if submit_button:
     else:
         st.error("Please upload all four files before submitting.")
 
-# QUESTIONAIRRE RENDERER ──────────────────────────────────────────────────────────────
-def render_episode_forms(episodes):
-    remaining_episodes = [
-        (i, ep) for i, ep in enumerate(episodes) 
-        if i not in st.session_state.completed_episodes
-    ]
-
-    if not remaining_episodes:
-        if "episodes" in st.session_state:
-            st.success("🎉 All stress episodes have been reviewed! Generating report...")
-            generate_care_manager_report()
-        return
-
-    st.header("🔴 Stress Detected")
-    st.write(f"You have **{len(remaining_episodes)}** episodes left to review.")
-
-    # FORM CONTAINER 
-    with st.container(height=500, border=True):
-        for i, ep in remaining_episodes:
-            top_physiological_response = ep['leading_factor']['display_name']
-            start_dt = datetime.fromtimestamp(ep['start_unix'])
-            end_dt = datetime.fromtimestamp(ep['end_unix'])
-            readable_start = start_dt.strftime("%d %B %Y, %H:%M")
-            readable_end = end_dt.strftime("%H:%M") 
-
-            with st.form(key=f"stress_form_{i}"):
-                st.subheader(f"Episode {i+1}: {readable_start} to {readable_end}")
-                st.caption(
-                f"Duration: {ep['duration_sec'] // 60}m {ep['duration_sec'] % 60}s  •  "
-                f"Top physiological symptom: {top_physiological_response}"
-            )
-
-                # --- CORRECT/INCORRECT CLASSIFICATION ---
-                classification = st.selectbox(
-                    "Are you stressed?",
-                    ("Yes", "No", "Ignore"),
-                )
-
-                # --- TRIGGER SECTION ---
-                trigger = st.multiselect(
-                    "What triggered the stress?",
-                    ["Daily Hassle", "Commute", "Work", "Family", "Physical", "Life Event", 
-                    "Financial", "Thoughts", "Other"],
-                    key=f"trigger_{i}"
-                )
-                
-                # --- EMOTIONAL SYMPTOMS ---
-                emotions = st.multiselect(
-                    "How are you feeling?",
-                    ["Motivated", "Calm", "Happy", "Sad", "Scared/Anxious", "Numb", "Angry"],
-                    key=f"emotion_{i}"
-                )
-                
-                # --- BEHAVIORAL INTERVENTION ---
-                action = st.selectbox(
-                    "What is your response?",
-                    [
-                        "Deep breathing", "Visualization", "Meditation", 
-                        "Progressive Muscle Relaxation", "Stretching", 
-                        "Self-massage", "Talk to a individual", 
-                        "Distraction (Media/Music/Hobby)", "Exercise", "Other"
-                    ],
-                    key=f"action_{i}"
-                )
-                
-                success_rate = st.select_slider(
-                    "How successful was this intervention to you?",
-                    options=[1, 2, 3, 4, 5],
-                    key=f"success_{i}"
-                )
-
-                feedback = st.multiselect(
-                    "How did you feel after?",
-                    ["Less Stressed", "Same Amount of Stressed", "More Stressed"],
-                    key=f"feedback_{i}"
-                )
-
-                    
-                submitted = st.form_submit_button("Save Reflection")
-                
-                if submitted:
-                        st.session_state.reflections[i] = {
-                            "original_episode": ep,
-                            "classification": classification,
-                            "triggers": trigger,
-                            "emotions": emotions,
-                            "action": action,
-                            "success_rate": success_rate,
-                            "feedback": feedback,
-                            "duration": ep['duration_sec']
-                        }
-                        st.session_state.completed_episodes.add(i)
-                        
-                        # DATABASE SAVE
-                        
-                        # FORCE RERUN FOR FORM DISAPPEARANCE
-                        st.rerun()
-
-# RENDERING QUESTIONAIRRES ──────────────────────────────────────────────────────────────
-if "episodes" in st.session_state:
-    render_episode_forms(st.session_state.episodes)
-
 # GENERATING REPORT ──────────────────────────────────────────────────────────────
 def generate_care_manager_report():
     st.divider()
@@ -263,3 +161,102 @@ def generate_care_manager_report():
     "1. Keeping track of best relaxation techniques for recommendation by storing all response inputs, " \
     "2. Intensity markers for each emotional symptom before and after episode" \
     "3. Finish all information to be included in Care Report, including showing raw data.")
+
+# QUESTIONAIRRE RENDERER ──────────────────────────────────────────────────────────────
+def render_episode_forms(episodes):
+    remaining_episodes = [
+        (i, ep) for i, ep in enumerate(episodes) 
+        if i not in st.session_state.completed_episodes
+    ]
+
+    if not remaining_episodes:
+        if "episodes" in st.session_state:
+            st.success("🎉 All stress episodes have been reviewed! Generating report...")
+            generate_care_manager_report()
+        return
+
+    st.header("🔴 Stress Detected")
+    st.write(f"You have **{len(remaining_episodes)}** episodes left to review.")
+
+    # FORM CONTAINER 
+    with st.container(height=500, border=True):
+        for i, ep in remaining_episodes:
+            top_physiological_response = ep['leading_factor']['display_name']
+            start_dt = datetime.fromtimestamp(ep['start_unix'])
+            end_dt = datetime.fromtimestamp(ep['end_unix'])
+            readable_start = start_dt.strftime("%d %B %Y, %H:%M")
+            readable_end = end_dt.strftime("%H:%M") 
+
+            with st.form(key=f"stress_form_{i}"):
+                st.subheader(f"Episode {i+1}: {readable_start} to {readable_end}")
+                st.caption(
+                f"Duration: {ep['duration_sec'] // 60}m {ep['duration_sec'] % 60}s  •  "
+                f"Top physiological symptom: {top_physiological_response}"
+            )
+
+                # --- CORRECT/INCORRECT CLASSIFICATION ---
+                classification = st.selectbox(
+                    "Are you stressed?",
+                    ("Yes", "No", "Ignore"),
+                )
+
+                # --- TRIGGER SECTION ---
+                trigger = st.multiselect(
+                    "What triggered the stress?",
+                    ["Daily Hassle", "Commute", "Work", "Family", "Physical", "Life Event", 
+                    "Financial", "Thoughts", "Other"],
+                    key=f"trigger_{i}"
+                )
+                
+                # --- EMOTIONAL SYMPTOMS ---
+                emotions = st.multiselect(
+                    "How are you feeling?",
+                    ["Motivated", "Calm", "Happy", "Sad", "Scared/Anxious", "Numb", "Angry"],
+                    key=f"emotion_{i}"
+                )
+                
+                # --- BEHAVIORAL INTERVENTION ---
+                action = st.selectbox(
+                    "What is your response?",
+                    [
+                        "Deep breathing", "Visualization", "Meditation", 
+                        "Progressive Muscle Relaxation", "Stretching", 
+                        "Self-massage", "Talk to a individual", 
+                        "Distraction (Media/Music/Hobby)", "Exercise", "Other"
+                    ],
+                    key=f"action_{i}"
+                )
+                
+                success_rate = st.select_slider(
+                    "How successful was this intervention to you?",
+                    options=[1, 2, 3, 4, 5],
+                    key=f"success_{i}"
+                )
+
+                feedback = st.selectbox(
+                    "How did you feel after?",
+                    ["Less Stressed", "Same Amount of Stressed", "More Stressed"],
+                    key=f"feedback_{i}"
+                )
+
+                    
+                submitted = st.form_submit_button("Save Reflection")
+                
+                if submitted:
+                        st.session_state.reflections[i] = {
+                            "original_episode": ep,
+                            "classification": classification,
+                            "triggers": trigger,
+                            "emotions": emotions,
+                            "action": action,
+                            "success_rate": success_rate,
+                            "feedback": feedback,
+                            "duration": ep['duration_sec']
+                        }
+                        st.session_state.completed_episodes.add(i)
+                        
+                        st.rerun()
+
+# RENDERING QUESTIONAIRRES ──────────────────────────────────────────────────────────────
+if "episodes" in st.session_state:
+    render_episode_forms(st.session_state.episodes)
