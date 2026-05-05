@@ -13,9 +13,6 @@ if "completed_episodes" not in st.session_state:
 if "reflections" not in st.session_state:
     st.session_state.reflections = {} 
 
-if "explanations" not in st.session_state:
-    st.session_state.explanations = {} 
-
 # PAGE CONFIG ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="StressLens",
@@ -77,14 +74,13 @@ with st.form("data_upload_form"):
 if submit_button:
     if all([acc_file, bvp_file, eda_file, temp_file]):
         with st.spinner("Processing biometric data..."):
-            episodes, results_df, explanations = preprocessing_pipeline(acc_file, bvp_file, eda_file, temp_file)
+            episodes, results_df = preprocessing_pipeline(acc_file, bvp_file, eda_file, temp_file)
             st.success("Processing Complete!")
 
             # EPISODES FORM MANAGEMENT 
             st.session_state.episodes = episodes
             st.session_state.results_df = results_df
             st.session_state.completed_episodes = set()
-            st.session_state.explanations = explanations
 
 
     else:
@@ -166,7 +162,7 @@ def render_episode_forms(episodes):
     # FORM CONTAINER 
     with st.container(height=500, border=True):
         for i, ep in remaining_episodes:
-            top_physiological_response = explanations[i]['display_name'] if explanations[i]['display_name'] else None
+            top_physiological_response = ep['leading_factor']
             start_dt = datetime.fromtimestamp(ep['start_unix'])
             end_dt = datetime.fromtimestamp(ep['end_unix'])
             readable_start = start_dt.strftime("%d %B %Y, %H:%M")
@@ -176,7 +172,7 @@ def render_episode_forms(episodes):
                 st.subheader(f"Episode {i+1}: {readable_start} to {readable_end}")
                 st.caption(
                 f"Duration: {ep['duration_sec'] // 60}m {ep['duration_sec'] % 60}s  •  "
-                f"Primary trigger: {top_physiological_response}"
+                f"Top physiological symptom: {top_physiological_response}"
             )
 
                 # --- CORRECT/INCORRECT CLASSIFICATION ---
