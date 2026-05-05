@@ -697,13 +697,22 @@ def group_stress_episodes(result_df: pd.DataFrame) -> list[dict]:
                     # Gap exceeded threshold → close the episode
                     duration_sec = int(last_stressed_unix - episode_start_unix)
                     if duration_sec >= MIN_EPISODE_SEC:
-                        episodes.append({
+                        episode = {
                             "start_iso":    episode_start_iso,
                             "end_iso":      last_stressed_iso,
                             "start_unix":   episode_start_unix,
                             "end_unix":     last_stressed_unix,
                             "duration_sec": duration_sec,
-                        })
+                            "leading_factor": get_leading_factor(
+                                {
+                                    "start_unix": episode_start_unix,
+                                    "end_unix":   last_stressed_unix,
+                                },
+                                result_df,
+                                bundle,
+                            ),
+                        }
+                        episodes.append(episode)
                     in_episode = False
                     gap_sec    = 0.0
 
@@ -711,13 +720,22 @@ def group_stress_episodes(result_df: pd.DataFrame) -> list[dict]:
     if in_episode and episode_start_unix is not None and last_stressed_unix is not None:
         duration_sec = int(last_stressed_unix - episode_start_unix)
         if duration_sec >= MIN_EPISODE_SEC:
-            episodes.append({
+            episode = {
                 "start_iso":    episode_start_iso,
                 "end_iso":      last_stressed_iso,
                 "start_unix":   episode_start_unix,
                 "end_unix":     last_stressed_unix,
                 "duration_sec": duration_sec,
-            })
+                "leading_factor": get_leading_factor(
+                    {
+                        "start_unix": episode_start_unix,
+                        "end_unix":   last_stressed_unix,
+                    },
+                    result_df,
+                    bundle,
+                ),
+            }
+            episodes.append(episode)
 
     return episodes
 
@@ -762,7 +780,4 @@ def preprocessing_pipeline(
     # 5. Group stressed windows into discrete episodes
     episodes = group_stress_episodes(result_df)
 
-    # 6. Return explanations
-    explanations = [get_leading_factor(ep, result_df, bundle) for ep in episodes]
-
-    return episodes, result_df, explanations
+    return episodes, result_df
