@@ -763,7 +763,8 @@ def preprocessing_pipeline(
     episodes = group_stress_episodes(result_df)
 
     # 6. Return explanations
-    explanations = get_leading_factor(episodes, result_df, bundle)
+    explanations = [get_leading_factor(ep, result_df, bundle) for ep in episodes]
+
 
     logging.info("Explanations:", explanations)
 
