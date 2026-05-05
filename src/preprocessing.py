@@ -119,7 +119,7 @@ def _parse_e4_upload(
     if data_df.empty:
         raise ValueError(f"{uploaded_file.name}: no data rows found after header.")
 
-    data = data_df.to_numpy(dtype=float)
+    data = data_df.to_numpy(dtype=np.float64)
     if data.ndim == 1:
         data = data.reshape(-1, 1)
 
@@ -206,8 +206,8 @@ def _decompose_eda(
     try:
         import neurokit2 as nk
         decomp = nk.eda_phasic(eda_filt, sampling_rate=int(fs))
-        scl = decomp["EDA_Tonic"].to_numpy(dtype=float)
-        scr = decomp["EDA_Phasic"].to_numpy(dtype=float)
+        scl = decomp["EDA_Tonic"].to_numpy(dtype=np.float64)
+        scr = decomp["EDA_Phasic"].to_numpy(dtype=np.float64)
     except Exception:
         # Fallback: very-low-pass for tonic, residual for phasic
         scl_cutoff = max(min(0.05, fs / 2.0 * 0.99), 1e-3)
