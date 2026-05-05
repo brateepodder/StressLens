@@ -112,7 +112,7 @@ def generate_care_manager_report():
 
     # ── TRENDS & INSIGHTS ─────────────────────────────────────────────────────
     st.subheader("Trends & Insights")
-    c1, c2 = st.columns(2)
+    c1, c2, c3 = st.columns(3)
 
     with c1:
         st.write("**Top Stressors**")
@@ -155,6 +155,14 @@ def generate_care_manager_report():
             st.table(technique_stats[["Count", "Avg Duration"]])
         else:
             st.write("No actions recorded.")
+
+        with c3:
+            st.write("**Top Physiological & Emotional Symptoms**")
+            if not df_confirmed.empty:
+                st.table(df_confirmed['emotions'].value_counts().head(3))
+                st.table(df_confirmed['symptom'].value_counts().head(3))
+            else:
+                st.write("No actions recorded.")
 
     # --- BASELINE NOTE ---
     st.info("Still need to add the following: " \
@@ -246,6 +254,7 @@ def render_episode_forms(episodes):
                         st.session_state.reflections[i] = {
                             "original_episode": ep,
                             "classification": classification,
+                            "symptom": top_physiological_response,
                             "triggers": trigger,
                             "emotions": emotions,
                             "action": action,
