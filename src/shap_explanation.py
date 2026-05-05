@@ -81,18 +81,19 @@ def get_leading_factor(
     threshold = bundle.get("threshold", 0.5)
 
     # ── 1. Find the first stressed window of this episode ────────────────────
-    trigger_mask = (
-        (result_df["window_start_unix"] >= float(episode["start_unix"])) &
-        (result_df["window_start_unix"] <  float(episode["end_unix"])) &
-        (result_df["predicted_stress"]  == 2)
-    )
-    trigger_rows = result_df[trigger_mask]
-
-    if trigger_rows.empty:
+    trigger_row = result_df[
+        result_df["window_start_unix"] == float(episode["start_unix"])
+    ]
+    if trigger_row.empty:
         return None
+    trigger_row     = trigger_row.iloc[0]
+    window_features = trigger_row[feature_cols].to_numpy(dtype=np.float64).copy()  # fix 3
 
-    trigger_row     = trigger_rows.sort_values("window_start_unix").iloc[0]
-    window_features = trigger_row[feature_cols].to_numpy(dtype=float).copy()
+    baseline_rows = result_df[result_df["predicted_stress"] != 2][feature_cols]
+    if baseline_rows.empty:
+        baseline_rows = result_df[feature_cols]
+    n_bg   = min(50, len(baseline_rows))
+    bg_raw = baseline_rows.sample(n=n_bg, random_state=42).to_numpy(dtype=np.float64).copy()
 
     # ── 2. Build a small background from non-stressed windows ────────────────
     baseline_rows = result_df[result_df["predicted_stress"] != 2][feature_cols]
