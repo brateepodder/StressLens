@@ -82,7 +82,7 @@ def get_leading_factor(
 
     # ── 1. Find the first stressed window of this episode ────────────────────
     trigger_row = result_df[
-        float(episode["start_unix"])
+        result_df["window_start_unix"] == float(episode["start_unix"])
     ]
     if trigger_row.empty:
         return None
