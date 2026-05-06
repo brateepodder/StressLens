@@ -140,6 +140,103 @@ def score_techniques(df_confirmed: pd.DataFrame) -> pd.DataFrame | None:
 
     return stats.sort_values("score", ascending=False)
 
+# ── Clinical thresholds from meta-analysis (post-AMI mortality risk) ──────────
+HRV_THRESHOLDS = {
+    "BVP_PRV_SDNN":  {"threshold": 50.0,  "label": "SDNN",  "unit": "ms"},
+    "BVP_PRV_RMSSD": {"threshold": 15.0,  "label": "RMSSD", "unit": "ms"},
+}
+
+def compute_hrv_report(result_df: pd.DataFrame) -> None:
+    """
+    Computes HRV statistics separately for baseline and stressed windows,
+    then flags values below clinical mortality-risk thresholds.
+
+    Baseline windows = predicted_stress == 1
+    Stressed windows = predicted_stress == 2
+    """
+    st.subheader("Heart Rate Variability (HRV) Report")
+    st.caption(
+        "Thresholds based on: *Which indices of HRV are the best predictors of mortality "
+        "after acute myocardial infarction? Meta-analysis of observational studies.*"
+    )
+
+    hrv_cols = list(HRV_THRESHOLDS.keys())
+
+    baseline_df = result_df[result_df["predicted_stress"] == 1][hrv_cols].dropna()
+    stressed_df = result_df[result_df["predicted_stress"] == 2][hrv_cols].dropna()
+
+    if baseline_df.empty:
+        st.warning("No baseline windows found — cannot compute resting HRV.")
+        return
+
+    # ── Per-metric display ────────────────────────────────────────────────────
+    for col, meta in HRV_THRESHOLDS.items():
+        label     = meta["label"]
+        threshold = meta["threshold"]
+        unit      = meta["unit"]
+
+        baseline_mean = baseline_df[col].mean()
+        baseline_std  = baseline_df[col].std()
+        stressed_mean = stressed_df[col].mean() if not stressed_df.empty else None
+
+        st.markdown(f"**{label}**")
+        m1, m2, m3 = st.columns(3)
+
+        with m1:
+            st.metric(
+                label=f"Baseline {label}",
+                value=f"{baseline_mean:.1f} {unit}",
+                delta=f"±{baseline_std:.1f} {unit}",
+                delta_color="off",
+            )
+
+        with m2:
+            if stressed_mean is not None:
+                st.metric(
+                    label=f"During Stress",
+                    value=f"{stressed_mean:.1f} {unit}",
+                    # Show drop from baseline as delta — negative = worsened
+                    delta=f"{stressed_mean - baseline_mean:.1f} {unit}",
+                    delta_color="inverse",  # red if negative (dropped during stress)
+                )
+            else:
+                st.metric(label="During Stress", value="No data")
+
+        with m3:
+            # Clinical risk flag on the BASELINE value —
+            # resting HRV is the clinically validated predictor, not stressed HRV
+            if baseline_mean < threshold:
+                st.error(
+                    f"⚠️ Below threshold ({threshold} {unit})\n\n"
+                    f"Associated with elevated cardiac mortality risk. "
+                    f"Recommend review with care manager."
+                )
+            else:
+                st.success(f"✅ Within normal range (>{threshold} {unit})")
+
+        st.divider()
+
+    # ── Summary flag for care manager ─────────────────────────────────────────
+    flagged = [
+        meta["label"]
+        for col, meta in HRV_THRESHOLDS.items()
+        if not baseline_df[col].dropna().empty
+        and baseline_df[col].mean() < meta["threshold"]
+    ]
+
+    if flagged:
+        st.warning(
+            f"🚨 **Clinical Alert:** The following HRV indices are below "
+            f"mortality-risk thresholds: **{', '.join(flagged)}**. "
+            f"This patient's resting HRV warrants discussion with their "
+            f"cardiologist or care manager."
+        )
+    else:
+        st.success(
+            "All measured HRV indices are within ranges not associated with "
+            "elevated post-cardiac-event mortality risk."
+        )
+
 # GENERATING REPORT ──────────────────────────────────────────────────────────────
 def generate_care_manager_report():
     st.divider()
@@ -243,6 +340,9 @@ def generate_care_manager_report():
                 display = display.reset_index(drop=True)
                 display.index += 1  # rank from 1
                 st.table(display)
+            
+            if "result_df" in st.session_state:
+                compute_hrv_report(st.session_state["result_df"])
 
             # --- BASELINE NOTE ---
             st.info("Still need to add the following: " \
