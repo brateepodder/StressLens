@@ -310,38 +310,41 @@ def generate_care_manager_report():
     with c3:
         st.write("**Top Physiological & Emotional Symptoms**")
         if not df_confirmed.empty:
-            st.table(df_confirmed['emotions'].value_counts().head(3))
+            emotions_exploded = df_confirmed['emotions'].explode()
+            emotions_exploded = emotions_exploded[emotions_exploded.notna() & (emotions_exploded != "")]
+            if not emotions_exploded.empty:
+                st.table(emotions_exploded.value_counts().head(3))
             st.table(df_confirmed['symptom'].value_counts().head(3))
         else:
-            st.write("No actions recorded.")
+            st.write("No symptoms recorded.")
 
-        st.subheader("Recommended Techniques")
-        scored = score_techniques(df_confirmed)
+    st.subheader("Recommended Techniques")
+    scored = score_techniques(df_confirmed)
 
-        if scored is None:
-            st.info("Not enough data yet — each technique needs at least 2 uses to be ranked.")
-        else:
-            best = scored.iloc[0]
-            st.success(
-                f"✅ **{best['action']}** is your most effective technique so far — "
-                f"{best['pct_felt_better']:.0f}% of the time you felt less stressed afterward, "
-                f"with an average episode duration of "
-                f"{int(best['avg_duration'] // 60)}m {int(best['avg_duration'] % 60)}s."
+    if scored is None:
+        st.info("Not enough data yet — each technique needs at least 2 uses to be ranked.")
+    else:
+        best = scored.iloc[0]
+        st.success(
+            f"✅ **{best['action']}** is your most effective technique so far — "
+            f"{best['pct_felt_better']:.0f}% of the time you felt less stressed afterward, "
+            f"with an average episode duration of "
+            f"{int(best['avg_duration'] // 60)}m {int(best['avg_duration'] % 60)}s."
+        )
+
+        # Show full ranking if there's more than one qualifying technique
+        if len(scored) > 1:
+            display = scored[["action", "count", "pct_felt_better", "avg_duration"]].copy()
+            display.columns = ["Technique", "Uses", "% Felt Better", "Avg Duration (s)"]
+            display["Avg Duration (s)"] = display["Avg Duration (s)"].apply(
+                lambda s: f"{int(s // 60)}m {int(s % 60)}s"
             )
-
-            # Show full ranking if there's more than one qualifying technique
-            if len(scored) > 1:
-                display = scored[["action", "count", "pct_felt_better", "avg_duration"]].copy()
-                display.columns = ["Technique", "Uses", "% Felt Better", "Avg Duration (s)"]
-                display["Avg Duration (s)"] = display["Avg Duration (s)"].apply(
-                    lambda s: f"{int(s // 60)}m {int(s % 60)}s"
-                )
-                display["% Felt Better"] = display["% Felt Better"].apply(lambda x: f"{x:.0f}%")
-                display = display.reset_index(drop=True)
-                display.index += 1  # rank from 1
-                st.table(display)
+            display["% Felt Better"] = display["% Felt Better"].apply(lambda x: f"{x:.0f}%")
+            display = display.reset_index(drop=True)
+            display.index += 1  # rank from 1
+            st.table(display)
             
-    if "result_df" in st.session_state:
+    if "results_df" in st.session_state:
         compute_hrv_report(st.session_state.results_df)
 
     # --- BASELINE NOTE ---
