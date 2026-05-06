@@ -341,14 +341,15 @@ def generate_care_manager_report():
                 display.index += 1  # rank from 1
                 st.table(display)
             
-            if "result_df" in st.session_state:
-                compute_hrv_report(st.session_state["result_df"])
+    with c3:
+        if "result_df" in st.session_state:
+            compute_hrv_report(st.session_state["result_df"])
 
-            # --- BASELINE NOTE ---
-            st.info("Still need to add the following: " \
-            "1. Keeping track of best relaxation techniques for recommendation by storing all response inputs, " \
-            "2. Intensity markers for each emotional symptom before and after episode" \
-            "3. Finish all information to be included in Care Report, including showing raw data.")
+    # --- BASELINE NOTE ---
+    st.info("Still need to add the following: " \
+    "1. Keeping track of best relaxation techniques for recommendation by storing all response inputs, " \
+    "2. Intensity markers for each emotional symptom before and after episode" \
+    "3. Finish all information to be included in Care Report, including showing raw data.")
 
 # QUESTIONAIRRE RENDERER ──────────────────────────────────────────────────────────────
 def render_episode_forms(episodes):
