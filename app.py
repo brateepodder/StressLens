@@ -307,13 +307,13 @@ def generate_care_manager_report():
         else:
             st.write("No actions recorded.")
 
-        with c3:
-            st.write("**Top Physiological & Emotional Symptoms**")
-            if not df_confirmed.empty:
-                st.table(df_confirmed['emotions'].value_counts().head(3))
-                st.table(df_confirmed['symptom'].value_counts().head(3))
-            else:
-                st.write("No actions recorded.")
+    with c3:
+        st.write("**Top Physiological & Emotional Symptoms**")
+        if not df_confirmed.empty:
+            st.table(df_confirmed['emotions'].value_counts().head(3))
+            st.table(df_confirmed['symptom'].value_counts().head(3))
+        else:
+            st.write("No actions recorded.")
 
         st.subheader("Recommended Techniques")
         scored = score_techniques(df_confirmed)
@@ -341,9 +341,8 @@ def generate_care_manager_report():
                 display.index += 1  # rank from 1
                 st.table(display)
             
-    with c3:
-        if "result_df" in st.session_state:
-            compute_hrv_report(st.session_state["result_df"])
+    if "result_df" in st.session_state:
+        compute_hrv_report(st.session_state.results_df)
 
     # --- BASELINE NOTE ---
     st.info("Still need to add the following: " \
