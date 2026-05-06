@@ -50,6 +50,7 @@ FEATURE_DISPLAY_NAMES: dict[str, str] = {
     "TEMP_slope":       "Skin Temperature Trend",
     "TEMP_mean":        "Average Skin Temperature",
     "TEMP_std":         "Skin Temperature Variability",
+    "ACC_std_3D":       "Accelerometer Variability"
 }
 
 

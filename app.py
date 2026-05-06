@@ -187,7 +187,7 @@ def render_episode_forms(episodes):
     st.write(f"You have **{len(remaining_episodes)}** episodes left to review.")
 
     # FORM CONTAINER 
-    with st.container(height=500, border=True):
+    with st.container(height=800, border=True):
         for i, ep in remaining_episodes:
             top_physiological_response = ep['leading_factor']['display_name']
             start_dt = datetime.fromtimestamp(ep['start_unix'])
