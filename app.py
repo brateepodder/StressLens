@@ -86,6 +86,60 @@ if submit_button:
     else:
         st.error("Please upload all four files before submitting.")
 
+EXCLUDED_TECHNIQUES = {"Other"}  # user-defined catch-all, likely unhealthy choices
+
+FEEDBACK_SCORE = {
+    "Less Stressed":           1.0,
+    "Same Amount of Stressed": 0.0,
+    "More Stressed":          -1.0,
+}
+
+def score_techniques(df_confirmed: pd.DataFrame) -> pd.DataFrame | None:
+    """
+    Ranks relaxation techniques by effectiveness.
+    Returns a DataFrame sorted best-first, or None if insufficient data.
+    """
+    if df_confirmed.empty:
+        return None
+
+    # Filter out excluded techniques
+    df = df_confirmed[~df_confirmed["action"].isin(EXCLUDED_TECHNIQUES)].copy()
+
+    # Map feedback strings to numeric scores
+    df["feedback_score"] = df["feedback"].map(FEEDBACK_SCORE).fillna(0.0)
+
+    # Aggregate per technique
+    stats = (
+        df.groupby("action")
+        .agg(
+            count          = ("action",        "count"),
+            avg_duration   = ("duration",      "mean"),
+            avg_feedback   = ("feedback_score","mean"),
+            pct_felt_better= ("feedback_score", lambda x: (x > 0).mean() * 100),
+        )
+        .reset_index()
+    )
+
+    # Only trust techniques used at least twice
+    stats = stats[stats["count"] >= 2]
+    if stats.empty:
+        return None
+
+    # Normalize duration: lower duration = better, so invert it
+    d_min, d_max = stats["avg_duration"].min(), stats["avg_duration"].max()
+    if d_max > d_min:
+        stats["norm_duration"] = 1 - (stats["avg_duration"] - d_min) / (d_max - d_min)
+    else:
+        stats["norm_duration"] = 1.0  # all same duration, neutral
+
+    # Normalize feedback: scale from [-1, 1] to [0, 1]
+    stats["norm_feedback"] = (stats["avg_feedback"] + 1) / 2
+
+    # Combined score — feedback weighted higher than duration
+    stats["score"] = 0.4 * stats["norm_duration"] + 0.6 * stats["norm_feedback"]
+
+    return stats.sort_values("score", ascending=False)
+
 # GENERATING REPORT ──────────────────────────────────────────────────────────────
 def generate_care_manager_report():
     st.divider()
@@ -164,11 +218,37 @@ def generate_care_manager_report():
             else:
                 st.write("No actions recorded.")
 
-    # --- BASELINE NOTE ---
-    st.info("Still need to add the following: " \
-    "1. Keeping track of best relaxation techniques for recommendation by storing all response inputs, " \
-    "2. Intensity markers for each emotional symptom before and after episode" \
-    "3. Finish all information to be included in Care Report, including showing raw data.")
+        st.subheader("Recommended Techniques")
+        scored = score_techniques(df_confirmed)
+
+        if scored is None:
+            st.info("Not enough data yet — each technique needs at least 2 uses to be ranked.")
+        else:
+            best = scored.iloc[0]
+            st.success(
+                f"✅ **{best['action']}** is your most effective technique so far — "
+                f"{best['pct_felt_better']:.0f}% of the time you felt less stressed afterward, "
+                f"with an average episode duration of "
+                f"{int(best['avg_duration'] // 60)}m {int(best['avg_duration'] % 60)}s."
+            )
+
+            # Show full ranking if there's more than one qualifying technique
+            if len(scored) > 1:
+                display = scored[["action", "count", "pct_felt_better", "avg_duration"]].copy()
+                display.columns = ["Technique", "Uses", "% Felt Better", "Avg Duration (s)"]
+                display["Avg Duration (s)"] = display["Avg Duration (s)"].apply(
+                    lambda s: f"{int(s // 60)}m {int(s % 60)}s"
+                )
+                display["% Felt Better"] = display["% Felt Better"].apply(lambda x: f"{x:.0f}%")
+                display = display.reset_index(drop=True)
+                display.index += 1  # rank from 1
+                st.table(display)
+
+            # --- BASELINE NOTE ---
+            st.info("Still need to add the following: " \
+            "1. Keeping track of best relaxation techniques for recommendation by storing all response inputs, " \
+            "2. Intensity markers for each emotional symptom before and after episode" \
+            "3. Finish all information to be included in Care Report, including showing raw data.")
 
 # QUESTIONAIRRE RENDERER ──────────────────────────────────────────────────────────────
 def render_episode_forms(episodes):
