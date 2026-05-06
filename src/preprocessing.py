@@ -73,6 +73,28 @@ def load_model() -> dict:
 # STEP 2 – Parse Empatica E4 uploads
 # ═════════════════════════════════════════════════════════════════════════════
 
+def _parse_timestamp(raw_value: str) -> float:
+    """
+    Converts an E4 start timestamp to Unix float.
+    Handles both Unix epoch format (e.g. '1234567890.0')
+    and ISO datetime strings (e.g. '2013-06-20 11:57:17').
+    """
+    try:
+        return float(raw_value)
+    except (ValueError, TypeError):
+        # Try ISO datetime string — assume UTC if no timezone info present
+        from datetime import datetime, timezone
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+            try:
+                dt = datetime.strptime(str(raw_value).strip(), fmt)
+                return dt.replace(tzinfo=timezone.utc).timestamp()
+            except ValueError:
+                continue
+        raise ValueError(
+            f"Cannot parse start timestamp '{raw_value}'. "
+            "Expected a Unix float or an ISO datetime string (YYYY-MM-DD HH:MM:SS)."
+        )
+
 def _parse_e4_upload(
     uploaded_file,
     expected_cols: list[str],
@@ -99,7 +121,7 @@ def _parse_e4_upload(
             f"{uploaded_file.name} has fewer than 3 rows — not a valid E4 CSV."
         )
 
-    start_ts = float(raw.iloc[0, 0])
+    start_ts = _parse_timestamp(raw.iloc[0, 0])
     fs       = float(raw.iloc[1, 0])
 
     if fs <= 0:
